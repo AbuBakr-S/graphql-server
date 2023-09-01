@@ -2,6 +2,7 @@
 import { ApolloServer } from '@apollo/server';
 // ? Startup the server so we can listen for requests
 import { startStandaloneServer } from '@apollo/server/standalone';
+import { v4 as uuidv4 } from 'uuid';
 let games = [
     { id: '1', title: 'Zelda, Tears of the Kingdom', platform: ['Switch'] },
     { id: '2', title: 'Final Fantasy 7 Remake', platform: ['PS5', 'Xbox'] },
@@ -39,7 +40,7 @@ const typeDefs = `#graphql
     rating: Int!
     content: String!
     game_id: ID!
-    game: Game!  # Related data
+    game: Game!  # Related data so we will create nested resolver functions
     author: Author!  # Related data
   }
   type Author {
@@ -58,34 +59,58 @@ const typeDefs = `#graphql
     authors: [Author]
     author(id: ID!): Author
   }
+  # Delete a game and return an array of remaining games
+  type Mutation {
+    addGame(game: AddGameInput!): Game
+    deleteGame(id: ID!): [Game]
+    updateGame(id: ID!, edits: EditGameInput!): Game
+  }
+  # A collection of fileds to use inside our Mutation as a single argument
+  input AddGameInput {
+    title: String!
+    platform: [String!]
+  }
+  # Update a game with optional fields to allow for updating one or both
+  input EditGameInput {
+    title: String
+    platform: [String!]
+  }
 `;
 // resolver functions for the typeDefs
 // ? We don't have to create resolvers for each nested property
 const resolvers = {
-    // Entry point for our queries
+    // Entry point for our queries to the graph
     Query: {
+        // List of games
         games() {
             return games;
         },
+        // Single game by ID
         game(_, args) {
             return games.find((game) => game.id === args.id);
         },
+        // List of reviews
         reviews() {
             return reviews;
         },
-        // resolver(parent, args, context)
+        // Single review by ID
         review(_, args) {
             return reviews.find((review) => review.id === args.id);
         },
+        // List of authors
         authors() {
             return authors;
         },
+        // Single author by ID
         author(_, args) {
             return authors.find((author) => author.id === args.id);
         },
     },
-    // Nested
+    // Nested request is related to the game object, so we add a new property caled Game: {}
     Game: {
+        // List of reviews based on the parent query for a single game
+        // ? 1. game(id) resolver - retrieve a single game
+        // ? 2. reviews(parent) - (parent is game(id)) retrieve a list of reviews for that game
         reviews(parent) {
             // Filter out any game IDs which don't match the individual review ID
             return reviews.filter((review) => review.game_id === parent.id);
@@ -100,10 +125,36 @@ const resolvers = {
     // Nested author and games inside of the Review object
     Review: {
         author(parent) {
+            // Get an author_id that matches the parent ID
             return authors.find((author) => author.id === parent.author_id);
         },
         game(parent) {
+            // Get an game_id that matches the parent ID
             return games.find((game) => game.id === parent.game_id);
+        }
+    },
+    // A resolver for deleting a game
+    Mutation: {
+        deleteGame(_, args) {
+            games = games.filter((game) => game.id !== args.id);
+            return games;
+        },
+        addGame(_, args) {
+            let game = {
+                ...args.game,
+                id: uuidv4()
+            };
+            games.push(game);
+            return game;
+        },
+        updateGame(_, args) {
+            games = games.map((game) => {
+                if (game.id === args.id) {
+                    return { ...game, ...args.edits };
+                }
+                return game;
+            });
+            return games.find((game) => game.id === args.id);
         }
     }
 };

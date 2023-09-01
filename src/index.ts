@@ -2,6 +2,7 @@
 import { ApolloServer } from '@apollo/server';
 // ? Startup the server so we can listen for requests
 import { startStandaloneServer } from '@apollo/server/standalone';
+import { v4 as uuidv4 } from 'uuid';
 
 // db
 // import { games, reviews, authors } from './data';
@@ -85,6 +86,22 @@ const typeDefs = `#graphql
     authors: [Author]
     author(id: ID!): Author
   }
+  # Delete a game and return an array of remaining games
+  type Mutation {
+    addGame(game: AddGameInput!): Game
+    deleteGame(id: ID!): [Game]
+    updateGame(id: ID!, edits: EditGameInput!): Game
+  }
+  # A collection of fileds to use inside our Mutation as a single argument
+  input AddGameInput {
+    title: String!
+    platform: [String!]
+  }
+  # Update a game with optional fields to allow for updating one or both
+  input EditGameInput {
+    title: String
+    platform: [String!]
+  }
 `;
 
 // resolver functions for the typeDefs
@@ -142,6 +159,31 @@ const resolvers = {
     game(parent) {
       // Get an game_id that matches the parent ID
       return games.find((game) => game.id === parent.game_id)
+    }
+  },
+  // A resolver for deleting a game
+  Mutation: {
+    deleteGame(_: any, args: Game) {
+      games = games.filter((game) => game.id !== args.id);
+      return games;
+    }, 
+    addGame(_: any, args) {
+      let game = {
+        ...args.game,
+        id: uuidv4()
+      }
+      games.push(game);
+      return game;
+    },
+    updateGame(_: any, args) {
+      games = games.map((game) => {
+        if (game.id === args.id) {
+          return { ...game, ...args.edits }
+        }
+        return game;
+      });
+
+      return games.find((game) => game.id === args.id)
     }
   }
 }
