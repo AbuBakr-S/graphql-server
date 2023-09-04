@@ -2,6 +2,7 @@
 import { ApolloServer } from '@apollo/server';
 // ? Startup the server so we can listen for requests
 import { startStandaloneServer } from '@apollo/server/standalone';
+// ? Generate unique IDs
 import { v4 as uuidv4 } from 'uuid';
 let games = [
     { id: '1', title: 'Zelda, Tears of the Kingdom', platform: ['Switch'] },
