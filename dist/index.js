@@ -25,17 +25,17 @@ let reviews = [
     { id: '6', rating: 7, content: 'lorem ipsum', author_id: '1', game_id: '2' },
     { id: '7', rating: 10, content: 'lorem ipsum', author_id: '3', game_id: '1' },
 ];
-// types
+// * Graphql schema types
 const typeDefs = `#graphql
-  # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
-
+  # We describe the main fields on a game resource and the relationships with other resources (1 game may have many reviews) 
   type Game {
     # ! Signifies non nullable
     id: ID!
     title: String!
-    platform: [String!]!
+    platform: [String!]!  # A platform must have an array of at least 1
     reviews: [Review!]  # A game may have no reviews
   }
+  # A Game is related to a Review by its game_id. A Review is also related to an Author (1 review has 1 author)
   type Review {
     id: ID!
     rating: Int!
@@ -44,6 +44,7 @@ const typeDefs = `#graphql
     game: Game!  # Related data so we will create nested resolver functions
     author: Author!  # Related data
   }
+  # An Author writes a review
   type Author {
     id: ID!
     name: String!
